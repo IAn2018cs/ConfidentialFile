@@ -39,7 +39,7 @@ public class StudentListActivity extends AppCompatActivity {
     private List<Student> mStudentList = new ArrayList<>();
     private ProgressDialog progressDialog;
     private ListView lv_student;
-    private String URL = "http://suguan.hicc.cn/hicccloudt/getInfo";
+    private String URL = "http://api.hicc.cn/api/TStudentInfo/Getpagestudentinfo";
     private SwipeRefreshLayout sw_refresh;
     private String title;
     private TextView tv_action_title;
@@ -71,6 +71,8 @@ public class StudentListActivity extends AppCompatActivity {
         OkHttpUtils
                 .get()
                 .url(URL)
+                .addParams("pageno","1")
+                .addParams("pagesize","100")
                 .addParams("timescode", String.valueOf(gradecode))
                 .addParams("divisionCode", String.valueOf(divisioncode))
                 .addParams("professionalCode", String.valueOf(professionalCode))

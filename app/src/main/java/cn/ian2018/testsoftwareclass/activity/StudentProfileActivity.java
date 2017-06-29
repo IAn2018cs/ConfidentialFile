@@ -2,7 +2,6 @@ package cn.ian2018.testsoftwareclass.activity;
 
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
-import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
@@ -18,8 +17,8 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.zhy.http.okhttp.OkHttpUtils;
-import com.zhy.http.okhttp.callback.BitmapCallback;
 import com.zhy.http.okhttp.callback.StringCallback;
 
 import org.json.JSONArray;
@@ -29,12 +28,13 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
-import cn.ian2018.testsoftwareclass.fragment.DetailedInfoFragment;
-import cn.ian2018.testsoftwareclass.bean.Family;
-import cn.ian2018.testsoftwareclass.fragment.FamilyInfoFragment;
 import cn.ian2018.testsoftwareclass.R;
-import cn.ian2018.testsoftwareclass.view.ScrollViewPager;
+import cn.ian2018.testsoftwareclass.bean.Family;
 import cn.ian2018.testsoftwareclass.bean.Student;
+import cn.ian2018.testsoftwareclass.fragment.DetailedInfoFragment;
+import cn.ian2018.testsoftwareclass.fragment.FamilyInfoFragment;
+import cn.ian2018.testsoftwareclass.utils.Logs;
+import cn.ian2018.testsoftwareclass.view.ScrollViewPager;
 import okhttp3.Call;
 
 /**
@@ -48,7 +48,7 @@ public class StudentProfileActivity extends AppCompatActivity {
     private TextView tv_sex;
     private TextView tv_stu_num;
     private ImageView iv_pic;
-    private String URL = "http://suguan.hicc.cn/hicccloudt/getStudentInfo";
+    private String URL = "http://api.hicc.cn/api/TStudentInfo/GetStudentInfo";
     private ProgressDialog progressDialog;
     private String stuName;
     private String stuNum;
@@ -71,22 +71,13 @@ public class StudentProfileActivity extends AppCompatActivity {
                     tv_stu_num.setText("学号：" + stuNum);
                     tv_class.setText("班级：" + classDes);
                     // 加载图片
-                    OkHttpUtils
-                            .get()
-                            .url(mStudent.getImageUrl())
-                            .build()
-                            .execute(new BitmapCallback() {
-                                @Override
-                                public void onError(Call call, Exception e, int id) {
-                                    closeProgressDialog();
-                                }
-
-                                @Override
-                                public void onResponse(Bitmap response, int id) {
-                                    iv_pic.setImageBitmap(response);
-                                    closeProgressDialog();
-                                }
-                            });
+                    Glide.with(StudentProfileActivity.this)
+                            .load(mStudent.getImageUrl())
+                            .placeholder(R.drawable.icon_pic)
+                            .centerCrop()
+                            .error(R.drawable.icon_pic)
+                            .into(iv_pic);
+                    closeProgressDialog();
                     break;
                 case 1:
                     if(unFindStudent != null){
@@ -103,6 +94,8 @@ public class StudentProfileActivity extends AppCompatActivity {
             }
         }
     };
+    private boolean familyIsOk = false;
+    private boolean studentInfoIsOk = false;
 
 
     @Override
@@ -134,23 +127,14 @@ public class StudentProfileActivity extends AppCompatActivity {
         tv_stu_num.setText("学号：" + mStudent.getStudentNu());
         tv_class.setText("班级：" + mStudent.getClassDescription());
         // 加载图片
-        OkHttpUtils
-                .get()
-                .url(mStudent.getImageUrl())
-                .build()
-                .execute(new BitmapCallback() {
-                    @Override
-                    public void onError(Call call, Exception e, int id) {
-                        closeProgressDialog();
-                    }
-
-                    @Override
-                    public void onResponse(Bitmap response, int id) {
-                        iv_pic.setImageBitmap(response);
-                        closeProgressDialog();
-                        Toast.makeText(getApplication(), "该学生信息不全", Toast.LENGTH_SHORT).show();
-                    }
-                });
+        Glide.with(StudentProfileActivity.this)
+                .load(mStudent.getImageUrl())
+                .placeholder(R.drawable.icon_pic)
+                .centerCrop()
+                .error(R.drawable.icon_pic)
+                .into(iv_pic);
+        closeProgressDialog();
+        Toast.makeText(getApplication(), "该学生信息不全", Toast.LENGTH_SHORT).show();
     }
 
     // 网络查询
@@ -159,7 +143,7 @@ public class StudentProfileActivity extends AppCompatActivity {
         OkHttpUtils
                 .get()
                 .url(URL)
-                .addParams("studentNum", stuNum)
+                .addParams("studentNu", stuNum)
                 .build()
                 .execute(new StringCallback() {
                     @Override
@@ -186,122 +170,92 @@ public class StudentProfileActivity extends AppCompatActivity {
                     JSONObject jsonObject = new JSONObject(response);
                     boolean sucessed = jsonObject.getBoolean("sucessed");
                     if (sucessed) {
-
                         JSONObject data = jsonObject.getJSONObject("data");
-                        JSONObject dataInfo = data.getJSONObject("dataInfo");
 
                         // **学生姓名
-                        stuName = dataInfo.getString("StudentName");
+                        stuName = data.getString("StudentName");
                         mStudent.setStudentName(stuName);
                         // **学号
-                        stuNum = dataInfo.getString("StudentNu");
+                        stuNum = data.getString("StudentNu");
                         mStudent.setStudentNu(stuNum);
                         // **性别
-                        sex = dataInfo.getString("GenderDescription");
+                        sex = data.getString("GenderDescription");
                         mStudent.setGenderDescription(sex);
                         // **班级
-                        classDes = dataInfo.getString("ClassDescription");
+                        classDes = data.getString("ClassDescription");
                         mStudent.setClassDescription(classDes);
                         // 照片
-                        imageUrl = dataInfo.getString("NewImage");
+                        imageUrl = data.getString("NewImage");
                         if (!imageUrl.equals("null")) {
                             mStudent.setImageUrl("http://home.hicc.cn/StudentImage/" + imageUrl);
                         } else {
-                            imageUrl = dataInfo.getString("OldImage");
+                            imageUrl = data.getString("OldImage");
                             mStudent.setImageUrl("http://home.hicc.cn/OldImage/" + imageUrl);
                         }
                         // -专业
-                        String professional = dataInfo.getString("ProfessionalDescription");
+                        String professional = data.getString("ProfessionalDescription");
                         mStudent.setProfessionalDescription(professional);
                         // -缴费状态
-                        String paymentStausDes = dataInfo.getString("PaymentStausDescription");
+                        String paymentStausDes = data.getString("PaymentStausDescription");
                         mStudent.setPaymentStausDescription(paymentStausDes);
                         // -民族
-                        String nationalDes = dataInfo.getString("NationalDescription");
+                        String nationalDes = data.getString("NationalDescription");
                         mStudent.setNationalDescription(nationalDes);
                         // -省份
-                        String provinceDes = dataInfo.getString("ProvinceDescription");
+                        String provinceDes = data.getString("ProvinceDescription");
                         mStudent.setProvinceDescription(provinceDes);
                         // **年级代码
-                        int gradeCode = dataInfo.getInt("GradeCode");
+                        int gradeCode = data.getInt("GradeCode");
                         mStudent.setGradeCode(gradeCode);
                         // -宿舍
-                        String dormitoryDes = dataInfo.getString("DormitoryDescription");
+                        String dormitoryDes = data.getString("DormitoryDescription");
                         mStudent.setDormitoryDescription(dormitoryDes);
                         // 宿舍号
-                        if (!dataInfo.getString("DormitoryNo").equals("null")) {
-                            int dormitoryNo = dataInfo.getInt("DormitoryNo");
+                        if (!data.getString("DormitoryNo").equals("null")) {
+                            int dormitoryNo = data.getInt("DormitoryNo");
                             mStudent.setDormitoryNo(dormitoryNo);
                         }
                         // -学部
-                        String division = dataInfo.getString("DivisionDescription");
+                        String division = data.getString("DivisionDescription");
                         mStudent.setDivisionDescription(division);
                         // -电话
-                        String phone = dataInfo.getString("YourPhone");
+                        String phone = data.getString("YourPhone");
                         mStudent.setYourPhone(phone);
                         // -年级
-                        String grade = dataInfo.getString("GradeDescription");
+                        String grade = data.getString("GradeDescription");
                         mStudent.setGradeDescription(grade);
                         // -床号
-                        String bedNumber = dataInfo.getString("BedNumber");
+                        String bedNumber = data.getString("BedNumber");
                         mStudent.setBedNumber(bedNumber);
                         // **毕业学校
-                        String oldSchool = dataInfo.getString("OldSchool");
+                        String oldSchool = data.getString("OldSchool");
                         mStudent.setOldSchool(oldSchool);
                         // -家庭住址
-                        String homeAddress = dataInfo.getString("HomeAddress");
+                        String homeAddress = data.getString("HomeAddress");
                         mStudent.setHomeAddress(homeAddress);
                         // -政治面貌
-                        String politicsStatusDes = dataInfo.getString("PoliticsStatusDescription");
+                        String politicsStatusDes = data.getString("PoliticsStatusDescription");
                         mStudent.setPoliticsStatusDescription(politicsStatusDes);
                         // -籍贯
-                        String nativePlace = dataInfo.getString("NativePlace");
+                        String nativePlace = data.getString("NativePlace");
                         mStudent.setNativePlace(nativePlace);
                         // -现场报道
-                        String liveReportStatueDes = dataInfo.getString("LiveReportStatueDescription");
+                        String liveReportStatueDes = data.getString("LiveReportStatueDescription");
                         mStudent.setLiveReportStatueDescription(liveReportStatueDes);
                         // -网上报道
-                        String onlineReportStatueDes = dataInfo.getString("OnlineReportStatueDescription");
+                        String onlineReportStatueDes = data.getString("OnlineReportStatueDescription");
                         mStudent.setOnlineReportStatueDescription(onlineReportStatueDes);
                         // 班级代码
-                        mStudent.setClassId(dataInfo.getInt("ClassId"));
+                        mStudent.setClassId(data.getInt("ClassId"));
 
-                        // 解析家庭信息
-                        JSONArray dataFamily = data.getJSONArray("dataFamily");
-                        for (int i = 0; i < dataFamily.length(); i++) {
-                            Family family = new Family();
+                        studentInfoIsOk = true;
 
-                            JSONObject familyInfo = dataFamily.getJSONObject(i);
-                            // 学号
-                            String stuNu = familyInfo.getString("StudentNu");
-                            family.setStudentNum(stuNu);
-                            // 姓名
-                            String name = familyInfo.getString("Name");
-                            family.setName(name);
-                            // 工作
-                            String workandPosition = familyInfo.getString("WorkandPosition");
-                            family.setWorkand(workandPosition);
-                            // 关系
-                            String relation = familyInfo.getString("Relation");
-                            family.setRelation(relation);
-                            // 电话
-                            String familyPhone = familyInfo.getString("Phone");
-                            family.setPhone(familyPhone);
-                            // 年龄
-                            int age = familyInfo.getInt("Age");
-                            family.setAge(age);
-                            // 政治面貌
-                            String politicsStatus = familyInfo.getString("PoliticsStatus");
-                            family.setPolitics(politicsStatus);
-                            // 联系地址
-                            String contactAddress = familyInfo.getString("ContactAddress");
-                            family.setContactAddress(contactAddress);
+                        // 获取家庭信息
+                        getFamilyInfo(stuNum);
 
-                            mFamilyList.add(family);
+                        if (studentInfoIsOk && familyIsOk) {
+                            mHandler.sendEmptyMessage(0);
                         }
-
-                        mHandler.sendEmptyMessage(0);
-
                     } else {
                         // 查不到  学号或服务器错误
                         mHandler.sendEmptyMessage(1);
@@ -313,6 +267,72 @@ public class StudentProfileActivity extends AppCompatActivity {
                 }
             }
         }.start();
+    }
+
+    // 获取家庭信息
+    private void getFamilyInfo(String stuNum) {
+        OkHttpUtils
+                .get()
+                .url("http://api.hicc.cn/api/TFamilyMembers/GetStuMembersByNum")
+                .addParams("studentNu", stuNum)
+                .build()
+                .execute(new StringCallback() {
+                    @Override
+                    public void onError(Call call, Exception e, int id) {
+                        Logs.d("获取家庭信息失败：" + e.toString());
+                    }
+
+                    @Override
+                    public void onResponse(String response, int id) {
+                        Logs.i("解析家庭信息");
+                        try {
+                            JSONObject jsonObject = new JSONObject(response);
+                            boolean sucessed = jsonObject.getBoolean("sucessed");
+                            if (sucessed) {
+                                // 解析家庭信息
+                                JSONArray dataFamily = jsonObject.getJSONArray("data");
+                                for (int i = 0; i < dataFamily.length(); i++) {
+                                    Family family = new Family();
+
+                                    JSONObject familyInfo = dataFamily.getJSONObject(i);
+                                    // 学号
+                                    String stuNu = familyInfo.getString("StudentNu");
+                                    family.setStudentNum(stuNu);
+                                    // 姓名
+                                    String name = familyInfo.getString("Name");
+                                    family.setName(name);
+                                    // 工作
+                                    String workandPosition = familyInfo.getString("WorkandPosition");
+                                    family.setWorkand(workandPosition);
+                                    // 关系
+                                    String relation = familyInfo.getString("Relation");
+                                    family.setRelation(relation);
+                                    // 电话
+                                    String familyPhone = familyInfo.getString("Phone");
+                                    family.setPhone(familyPhone);
+                                    // 年龄
+                                    int age = familyInfo.getInt("Age");
+                                    family.setAge(age);
+                                    // 政治面貌
+                                    String politicsStatus = familyInfo.getString("PoliticsStatus");
+                                    family.setPolitics(politicsStatus);
+                                    // 联系地址
+                                    String contactAddress = familyInfo.getString("ContactAddress");
+                                    family.setContactAddress(contactAddress);
+
+                                    mFamilyList.add(family);
+                                }
+                                familyIsOk = true;
+
+                                if (studentInfoIsOk && familyIsOk) {
+                                    mHandler.sendEmptyMessage(0);
+                                }
+                            }
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
     }
 
     // 显示进度对话框
